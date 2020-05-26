@@ -1,6 +1,7 @@
 const { ApolloServer, gql } = require('apollo-server-express');
 const express = require('express');
 const db = require('./db');
+const dbf = db.dbfunction;
 const cors = require('cors');
 const path = require('path')
 var graphqlHTTP = require('express-graphql');
@@ -57,14 +58,14 @@ const typeDefs = gql`
 const resolvers = {
     Query: {
         feed: async (parents, args, context, info) => {
-            var dbf = db.dbfunction;
+            var dbf = context.dbf;
         
             const out = await dbf.getAllUser();
          
             return out;
         },
         finduser: async (parents, args, context, info) => {
-            var dbf = db.dbfunction;
+            var dbf = context.dbf;
           
             const target = await dbf.getuser(args.email)
       
@@ -72,13 +73,13 @@ const resolvers = {
         },
         getstat: async (parents, args, context, info) => {
         
-            var dbf = db.dbfunction;
+            var dbf = context.dbf;
             const inserted = await dbf.getstatistic();
         
             return inserted;
         },
         findHistory: async (parents, args, context, info) => {
-            var dbf = db.dbfunction;
+            var dbf = context.dbf;
             const user = await dbf.getuser(args.email);
             const targets = await dbf.gethistorybyuserkw(user._id, args.keyword);
             return targets;
@@ -87,7 +88,7 @@ const resolvers = {
     Mutation: {
 
         adduser: async (parents, args, context, info) => {
-            var dbf = db.dbfunction;
+            var dbf = context.dbf;
             let out = await dbf.adduser(args.email)
             console.log('out in adduser');
             console.log(out);
@@ -95,21 +96,21 @@ const resolvers = {
 
         },
         addhistory: async (parents, args, context, info) => {
-            var dbf = db.dbfunction;
+            var dbf = context.dbf;
             let out = await dbf.addHistory(args.title, args.price, args.sale, args.url, args.img, args.user, args.keyword)
             console.log('out in addhistory');
             console.log(out);
             return out;
         },
         updateuser: async (parents, args, context, info) => {
-            var dbf = db.dbfunction;
+            var dbf = context.dbf;
             let out = await dbf.updateuser(args._id, args.email);
             console.log('out in updateuser');
             console.log(out);
             return out;
         },
         deleteuser: async (parents, args, context, info) => {
-            var dbf = db.dbfunction;
+            var dbf = context.dbf;
             let out = await dbf.deluser(args.email);
             console.log('out in deluser');
             console.log(out);
@@ -118,7 +119,7 @@ const resolvers = {
         webmine: async (parents, args, context, info) => {
             console.log('webmine!')
             console.log('args,',args)
-            var dbf = db.dbfunction;
+            var dbf = context.dbf;
             console.log('1')
             var user = await dbf.getuser(args.email)
             console.log('2')
@@ -226,7 +227,7 @@ const resolvers = {
         email: (parents) => parents.email,
         History: async (parents, args, context, info) => {
             console.log("in user history")
-            var dbf = db.dbfunction;
+            var dbf = context.dbf;
             let out = await dbf.gethistorybyuser(parents._id);
             out.sort((a, b) => {
                 var ca, cb;
@@ -271,19 +272,29 @@ const resolvers = {
     }
   };
 
-const server = new ApolloServer({ typeDefs, resolvers });
-server.applyMiddleware({app})  
-app.use(cors());
-app.use('/graphql', graphqlHTTP({
-    schema: typeDefs,
-    rootValue: resolvers,
-    graphiql: true,
-  }));
-app.use(express.static('public'));
+// const server = new ApolloServer({ typeDefs, resolvers });
+// server.applyMiddleware({app})  
+// app.use(cors());
+// app.use('/graphql', graphqlHTTP({
+//     schema: typeDefs,
+//     rootValue: resolvers,
+//     graphiql: true,
+//     context: { dbf: dbf }
+//   }));
+// app.use(express.static('public'));
 
-app.get('*',(req,res)=>{
-    res.sendFile(path.resolve(__dirname,'public','index.html'))
+// app.get('*',(req,res)=>{
+//     res.sendFile(path.resolve(__dirname,'public','index.html'))
+// })
+// const PORT = process.env.PORT || 5000;
+// // The `listen` method launches a web server.
+// app.listen(PORT,()=>console.log(`🚀  Server ready at 5000`))
+
+const { GraphQLServer } = require('graphql-yoga')
+const server = new GraphQLServer({
+    typeDefs: typeDefs,
+    resolvers,
+    context: { dbf: dbf },
 })
-const PORT = process.env.PORT || 5000;
-// The `listen` method launches a web server.
-app.listen(PORT,()=>console.log(`🚀  Server ready at 5000`))
+
+server.start(() => console.log(`Server is running on http://localhost:4000`))
